@@ -46,7 +46,7 @@ private[akka] object Ast {
   case class IterableProducerNode[I](iterable: immutable.Iterable[I]) extends ProducerNode[I] {
     def createProducer(settings: MaterializerSettings, context: ActorRefFactory): Producer[I] =
       if (iterable.isEmpty) EmptyProducer.asInstanceOf[Producer[I]]
-      else new ActorProducer[I](context.actorOf(IterableProducer.props(iterable, settings)))
+      else new ActorProducer[I](context.actorOf(IterableProducer.props(iterable, settings)), Some(iterable))
   }
   case class ThunkProducerNode[I](f: () ⇒ I) extends ProducerNode[I] {
     def createProducer(settings: MaterializerSettings, context: ActorRefFactory): Producer[I] =
@@ -56,11 +56,11 @@ private[akka] object Ast {
     def createProducer(settings: MaterializerSettings, context: ActorRefFactory): Producer[I] =
       future.value match {
         case Some(Success(element)) ⇒
-          new ActorProducer[I](context.actorOf(IterableProducer.props(List(element), settings)))
+          new ActorProducer[I](context.actorOf(IterableProducer.props(List(element), settings)), Some(future))
         case Some(Failure(t)) ⇒
-          new ErrorProducer(t).asInstanceOf[Producer[I]]
+          ErrorProducer(t).asInstanceOf[Producer[I]]
         case None ⇒
-          new ActorProducer[I](context.actorOf(FutureProducer.props(future, settings)))
+          new ActorProducer[I](context.actorOf(FutureProducer.props(future, settings)), Some(future))
       }
   }
 }
